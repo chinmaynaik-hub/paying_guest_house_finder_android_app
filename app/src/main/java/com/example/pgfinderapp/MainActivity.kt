@@ -1,5 +1,7 @@
 package com.example.pgfinderapp
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -74,7 +77,8 @@ data class PG(
     val rating: Double,
     val images: List<String>,
     val reviews: List<Review>,
-    val isVerified: Boolean
+    val isVerified: Boolean,
+    val mapLink: String? = null
 )
 
 val initialPGs = listOf(
@@ -84,19 +88,19 @@ val initialPGs = listOf(
         capacity = 50, availableBeds = 10, costPerMonth = 8000, foodType = FoodType.BOTH, acType = ACType.BOTH, bedsInRoom = 2,
         rating = 4.5, images = listOf(), reviews = listOf(
             Review("r1", "u1", "Rahul", 4, "Good food and clean rooms.")
-        ), isVerified = true
+        ), isVerified = true, mapLink = "https://goo.gl/maps/example1"
     ),
     PG(
         id = "2", ownerId = "owner1", ownerName = "Rahul Sharma", ownerPhone = "9876543210", ownerEmail = "rahul@example.com", alternatePhone = null, name = "Comfort Stay Women PG",
         address = "456 Cross Rd, HSR Layout", location = "HSR Layout, Bangalore",
         capacity = 30, availableBeds = 5, costPerMonth = 10000, foodType = FoodType.VEG, acType = ACType.AC, bedsInRoom = 1,
-        rating = 4.8, images = listOf(), reviews = listOf(), isVerified = true
+        rating = 4.8, images = listOf(), reviews = listOf(), isVerified = true, mapLink = "https://goo.gl/maps/example2"
     ),
     PG(
         id = "3", ownerId = "guest1", ownerName = "Amit Kumar", ownerPhone = "9123456780", ownerEmail = "amit@example.com", alternatePhone = "9988776655", name = "Budget PG",
         address = "789 2nd Main, BTM Layout", location = "BTM Layout, Bangalore",
         capacity = 100, availableBeds = 20, costPerMonth = 5000, foodType = FoodType.NONE, acType = ACType.NON_AC, bedsInRoom = 4,
-        rating = 3.2, images = listOf(), reviews = listOf(), isVerified = false
+        rating = 3.2, images = listOf(), reviews = listOf(), isVerified = false, mapLink = null
     )
 )
 
@@ -534,7 +538,7 @@ fun GuestHomeScreen(pgs: List<PG>, onSelectPG: (PG) -> Unit) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search location, name...") },
+                    placeholder = { Text("Search location, name, address...") },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.White,
@@ -554,7 +558,8 @@ fun GuestHomeScreen(pgs: List<PG>, onSelectPG: (PG) -> Unit) {
 
         val filtered = pgs.filter {
             it.name.contains(searchQuery, ignoreCase = true) ||
-                    it.location.contains(searchQuery, ignoreCase = true)
+                    it.location.contains(searchQuery, ignoreCase = true) ||
+                    it.address.contains(searchQuery, ignoreCase = true)
         }.sortedByDescending { it.rating }
 
         LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -684,6 +689,7 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
     var acType by remember { mutableStateOf(initialPG?.acType?.name ?: "Both") }
     var beds by remember { mutableStateOf(initialPG?.bedsInRoom?.toString() ?: "") }
     var images by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else listOf("https://picsum.photos/seed/newpg/600/400")) }
+    var mapLink by remember { mutableStateOf(initialPG?.mapLink ?: "") }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SmallTopAppBar(
@@ -717,6 +723,8 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
             OutlinedTextField(value = acType, onValueChange = { acType = it }, label = { Text("AC / Non-AC / Both") }, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(value = beds, onValueChange = { beds = it }, label = { Text("Beds per Room *") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(value = mapLink, onValueChange = { mapLink = it }, label = { Text("Google Map Link") }, modifier = Modifier.fillMaxWidth())
 
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -759,7 +767,8 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
                             name = name, address = address, location = location,
                             capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.BOTH,
                             acType = when(acType.uppercase()) { "AC" -> ACType.AC; "NON-AC", "NON AC" -> ACType.NON_AC; else -> ACType.BOTH },
-                            bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = images.filter { it.isNotBlank() }, reviews = listOf(), isVerified = false
+                            bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = images.filter { it.isNotBlank() }, reviews = listOf(), isVerified = false,
+                            mapLink = mapLink.takeIf { it.isNotBlank() }
                         ))
                     }
                 },
@@ -774,6 +783,7 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
     var comment by remember { mutableStateOf("") }
     var rating by remember { mutableStateOf(5) }
     var showMoreImages by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         SmallTopAppBar(
@@ -804,6 +814,25 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
 
                     Text("Address", fontWeight = FontWeight.Bold)
                     Text(pg.address, color = Color.DarkGray)
+
+                    pg.mapLink?.let { link ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    // Handle error
+                                }
+                            },
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("View on Maps")
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
