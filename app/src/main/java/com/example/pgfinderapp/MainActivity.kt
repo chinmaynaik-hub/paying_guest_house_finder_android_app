@@ -38,8 +38,17 @@ import java.util.Locale
 // ==========================================
 
 enum class Role { GUEST, OWNER }
-enum class FoodType { VEG, NON_VEG, BOTH, NONE }
-enum class ACType { AC, NON_AC, BOTH }
+enum class FoodType(val displayName: String) {
+    VEG("Veg"),
+    NON_VEG("Non-Veg"),
+    BOTH("Veg & Non-Veg"),
+    NONE("None")
+}
+enum class ACType(val displayName: String) {
+    AC("AC"),
+    NON_AC("NON-AC"),
+    BOTH("AC&NON-AC")
+}
 
 data class User(
     val id: String,
@@ -625,7 +634,7 @@ fun PGCard(pg: PG, onClick: () -> Unit) {
                 Text(pg.location, color = Color.Gray, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${pg.bedsInRoom} Sharing • ${pg.foodType}", fontSize = 14.sp, color = Color.DarkGray)
+                    Text("${pg.bedsInRoom} Sharing • ${pg.foodType.displayName} • ${pg.acType.displayName}", fontSize = 14.sp, color = Color.DarkGray)
                     Text("₹${pg.costPerMonth}/mo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -686,7 +695,8 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
     var capacity by remember { mutableStateOf(initialPG?.capacity?.toString() ?: "") }
     var availableBeds by remember { mutableStateOf(initialPG?.availableBeds?.toString() ?: "") }
     var cost by remember { mutableStateOf(initialPG?.costPerMonth?.toString() ?: "") }
-    var acType by remember { mutableStateOf(initialPG?.acType?.name ?: "Both") }
+    var acType by remember { mutableStateOf(initialPG?.acType?.name ?: "BOTH") }
+    var foodType by remember { mutableStateOf(initialPG?.foodType?.name ?: "BOTH") }
     var beds by remember { mutableStateOf(initialPG?.bedsInRoom?.toString() ?: "") }
     var images by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else listOf("https://picsum.photos/seed/newpg/600/400")) }
     var mapLink by remember { mutableStateOf(initialPG?.mapLink ?: "") }
@@ -720,7 +730,38 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(value = cost, onValueChange = { cost = it }, label = { Text("Cost per Month *") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(value = acType, onValueChange = { acType = it }, label = { Text("AC / Non-AC / Both") }, modifier = Modifier.fillMaxWidth())
+            
+            Text("Food Available", fontWeight = FontWeight.Medium, modifier = Modifier.padding(vertical = 4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FoodType.entries.forEach { type ->
+                    OutlinedButton(
+                        onClick = { foodType = type.name },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (foodType == type.name) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        )
+                    ) {
+                        Text(type.displayName, fontSize = 10.sp)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text("AC Type", fontWeight = FontWeight.Medium, modifier = Modifier.padding(vertical = 4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ACType.entries.forEach { type ->
+                    OutlinedButton(
+                        onClick = { acType = type.name },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (acType == type.name) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        )
+                    ) {
+                        Text(type.displayName, fontSize = 12.sp)
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(value = beds, onValueChange = { beds = it }, label = { Text("Beds per Room *") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
@@ -765,8 +806,8 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
                         onSave(PG(
                             id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
                             name = name, address = address, location = location,
-                            capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.BOTH,
-                            acType = when(acType.uppercase()) { "AC" -> ACType.AC; "NON-AC", "NON AC" -> ACType.NON_AC; else -> ACType.BOTH },
+                            capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
+                            acType = ACType.valueOf(acType),
                             bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = images.filter { it.isNotBlank() }, reviews = listOf(), isVerified = false,
                             mapLink = mapLink.takeIf { it.isNotBlank() }
                         ))
@@ -807,7 +848,7 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text("₹${pg.costPerMonth} / month", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Text("${pg.bedsInRoom} Sharing • ${pg.foodType} Food • ${pg.acType.name.replace("_", "-")}", fontSize = 16.sp)
+                    Text("${pg.bedsInRoom} Sharing • ${pg.foodType.displayName} Food • ${pg.acType.displayName}", fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("${pg.availableBeds} / ${pg.capacity} Beds Available", fontSize = 16.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
