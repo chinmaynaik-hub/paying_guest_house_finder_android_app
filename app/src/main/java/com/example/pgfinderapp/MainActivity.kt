@@ -87,7 +87,8 @@ data class PG(
     val images: List<String>,
     val reviews: List<Review>,
     val isVerified: Boolean,
-    val mapLink: String? = null
+    val mapLink: String? = null,
+    val rules: String? = null
 )
 
 val initialPGs = listOf(
@@ -97,19 +98,21 @@ val initialPGs = listOf(
         capacity = 50, availableBeds = 10, costPerMonth = 8000, foodType = FoodType.BOTH, acType = ACType.BOTH, bedsInRoom = 2,
         rating = 4.5, images = listOf(), reviews = listOf(
             Review("r1", "u1", "Rahul", 4, "Good food and clean rooms.")
-        ), isVerified = true, mapLink = "https://goo.gl/maps/example1"
+        ), isVerified = true, mapLink = "https://goo.gl/maps/example1",
+        rules = "1. No smoking\n2. Entry till 11 PM\n3. Guests not allowed overnight"
     ),
     PG(
         id = "2", ownerId = "owner1", ownerName = "Rahul Sharma", ownerPhone = "9876543210", ownerEmail = "rahul@example.com", alternatePhone = null, name = "Comfort Stay Women PG",
         address = "456 Cross Rd, HSR Layout", location = "HSR Layout, Bangalore",
         capacity = 30, availableBeds = 5, costPerMonth = 10000, foodType = FoodType.VEG, acType = ACType.AC, bedsInRoom = 1,
-        rating = 4.8, images = listOf(), reviews = listOf(), isVerified = true, mapLink = "https://goo.gl/maps/example2"
+        rating = 4.8, images = listOf(), reviews = listOf(), isVerified = true, mapLink = "https://goo.gl/maps/example2",
+        rules = "1. Maintain cleanliness\n2. No loud music after 10 PM"
     ),
     PG(
         id = "3", ownerId = "guest1", ownerName = "Amit Kumar", ownerPhone = "9123456780", ownerEmail = "amit@example.com", alternatePhone = "9988776655", name = "Budget PG",
         address = "789 2nd Main, BTM Layout", location = "BTM Layout, Bangalore",
         capacity = 100, availableBeds = 20, costPerMonth = 5000, foodType = FoodType.NONE, acType = ACType.NON_AC, bedsInRoom = 4,
-        rating = 3.2, images = listOf(), reviews = listOf(), isVerified = false, mapLink = null
+        rating = 3.2, images = listOf(), reviews = listOf(), isVerified = false, mapLink = null, rules = null
     )
 )
 
@@ -700,6 +703,7 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
     var beds by remember { mutableStateOf(initialPG?.bedsInRoom?.toString() ?: "") }
     var images by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else listOf("https://picsum.photos/seed/newpg/600/400")) }
     var mapLink by remember { mutableStateOf(initialPG?.mapLink ?: "") }
+    var rules by remember { mutableStateOf(initialPG?.rules ?: "") }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SmallTopAppBar(
@@ -766,6 +770,15 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
             OutlinedTextField(value = beds, onValueChange = { beds = it }, label = { Text("Beds per Room *") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(value = mapLink, onValueChange = { mapLink = it }, label = { Text("Google Map Link") }, modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = rules,
+                onValueChange = { rules = it },
+                label = { Text("PG Rules") },
+                placeholder = { Text("Enter rules (e.g. No smoking, Curfew time...)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -809,7 +822,8 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
                             capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
                             acType = ACType.valueOf(acType),
                             bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = images.filter { it.isNotBlank() }, reviews = listOf(), isVerified = false,
-                            mapLink = mapLink.takeIf { it.isNotBlank() }
+                            mapLink = mapLink.takeIf { it.isNotBlank() },
+                            rules = rules.takeIf { it.isNotBlank() }
                         ))
                     }
                 },
@@ -873,6 +887,12 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("View on Maps")
                         }
+                    }
+
+                    if (!pg.rules.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("PG Rules", fontWeight = FontWeight.Bold)
+                        Text(pg.rules, color = Color.DarkGray)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
