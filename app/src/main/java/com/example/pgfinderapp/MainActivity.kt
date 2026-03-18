@@ -836,7 +836,8 @@ fun AddPGScreen(initialPG: PG? = null, onSave: (PG) -> Unit, onBack: () -> Unit)
 @Composable
 fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: (Review) -> Unit) {
     var comment by remember { mutableStateOf("") }
-    var rating by remember { mutableStateOf(5) }
+    var rating by remember { mutableIntStateOf(5) }
+    var showAddReview by remember { mutableStateOf(false) }
     var showMoreImages by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -910,20 +911,50 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Reviews", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-                    if (currentUser?.role == Role.GUEST) {
-                        OutlinedTextField(
-                            value = comment, onValueChange = { comment = it },
-                            label = { Text("Write a review...") },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                        )
-                        Button(onClick = {
-                            if (comment.isNotBlank()) {
-                                onAddReview(Review(System.currentTimeMillis().toString(), currentUser.id, currentUser.name, rating, comment))
-                                comment = ""
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Reviews", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        if (currentUser?.role == Role.GUEST) {
+                            IconButton(onClick = { showAddReview = !showAddReview }) {
+                                Icon(
+                                    imageVector = if (showAddReview) Icons.Default.Close else Icons.Default.Add,
+                                    contentDescription = "Add Review"
+                                )
                             }
-                        }) { Text("Post Review") }
+                        }
+                    }
+
+                    if (showAddReview && currentUser?.role == Role.GUEST) {
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            Text("Your Rating:", fontWeight = FontWeight.Medium)
+                            Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                                repeat(5) { index ->
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = if (index < rating) Color(0xFFFFC107) else Color.LightGray,
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clickable { rating = index + 1 }
+                                    )
+                                }
+                            }
+                            OutlinedTextField(
+                                value = comment, onValueChange = { comment = it },
+                                label = { Text("Write a review...") },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                            )
+                            Button(onClick = {
+                                if (comment.isNotBlank()) {
+                                    onAddReview(Review(System.currentTimeMillis().toString(), currentUser.id, currentUser.name, rating, comment))
+                                    comment = ""
+                                    showAddReview = false
+                                }
+                            }) { Text("Post Review") }
+                        }
                     }
                 }
             }
