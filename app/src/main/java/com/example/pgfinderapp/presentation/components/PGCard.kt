@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pgfinderapp.data.model.DistanceUtils
 import com.example.pgfinderapp.data.model.PG
 import java.util.Locale
 
@@ -26,8 +28,19 @@ import java.util.Locale
 fun PGCard(
     pg: PG, 
     onClick: () -> Unit,
-    onAddReviewClick: () -> Unit = {}
+    onAddReviewClick: () -> Unit = {},
+    userLatitude: Double? = null,
+    userLongitude: Double? = null
 ) {
+    // Calculate distance if user location and PG coordinates are available
+    val distanceText = if (userLatitude != null && userLongitude != null && 
+                          pg.latitude != null && pg.longitude != null) {
+        val distance = DistanceUtils.calculateDistance(
+            userLatitude, userLongitude, pg.latitude, pg.longitude
+        )
+        DistanceUtils.formatDistance(distance)
+    } else null
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -47,6 +60,33 @@ fun PGCard(
                     Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
                         Text(if (pg.rating > 0) String.format(Locale.US, "%.1f", pg.rating) else "New", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                // Distance badge
+                if (distanceText != null) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.LocationOn, 
+                                null, 
+                                tint = MaterialTheme.colorScheme.primary, 
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                distanceText, 
+                                fontSize = 11.sp, 
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }

@@ -45,6 +45,13 @@ fun PGFinderApp() {
     // For adding review from card
     var reviewingPG by remember { mutableStateOf<PG?>(null) }
     var showReviewDialog by remember { mutableStateOf(false) }
+    
+    // For map picker
+    var pendingLatitude by remember { mutableStateOf<Double?>(null) }
+    var pendingLongitude by remember { mutableStateOf<Double?>(null) }
+    var mapPickerReturnScreen by remember { mutableStateOf("add_pg") }
+    var mapPickerInitialLat by remember { mutableStateOf<Double?>(null) }
+    var mapPickerInitialLng by remember { mutableStateOf<Double?>(null) }
 
     val isLoggedIn = currentUser != null
 
@@ -132,7 +139,7 @@ fun PGFinderApp() {
 
     Scaffold(
         bottomBar = {
-            if (currentScreen !in listOf("welcome", "login", "signup", "forgot_password", "add_pg", "edit_pg", "manage_pgs", "pg_details")) {
+            if (currentScreen !in listOf("welcome", "login", "signup", "forgot_password", "add_pg", "edit_pg", "manage_pgs", "pg_details", "map_picker")) {
                 NavigationBar {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
@@ -148,6 +155,8 @@ fun PGFinderApp() {
                             if (!isLoggedIn) {
                                 showLoginDialog = true
                             } else {
+                                pendingLatitude = null
+                                pendingLongitude = null
                                 currentScreen = "add_pg"
                             }
                         }
@@ -210,32 +219,81 @@ fun PGFinderApp() {
                 )
                 "owner_home" -> OwnerHomeScreen(
                     pgs = pgs.filter { it.ownerId == currentUser?.id },
-                    onAdd = { currentScreen = "add_pg" },
+                    onAdd = { 
+                        pendingLatitude = null
+                        pendingLongitude = null
+                        currentScreen = "add_pg" 
+                    },
                     onSelectPG = { pg -> selectedPG = pg; currentScreen = "pg_details" }
                 )
-                "add_pg" -> AddPGScreen(
+                "add_pg" -> AddPGScreenWithCoordinates(
+                    selectedLatitude = pendingLatitude,
+                    selectedLongitude = pendingLongitude,
                     onSave = { newPg ->
                         pgs = pgs + newPg.copy(
                             id = System.currentTimeMillis().toString(),
                             ownerId = currentUser!!.id,
                             isVerified = currentUser?.role == Role.OWNER
                         )
+                        pendingLatitude = null
+                        pendingLongitude = null
                         currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home"
                     },
-                    onBack = { currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home" }
+                    onBack = { 
+                        pendingLatitude = null
+                        pendingLongitude = null
+                        currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home" 
+                    },
+                    onPickLocation = { lat, lng ->
+                        mapPickerReturnScreen = "add_pg"
+                        mapPickerInitialLat = lat
+                        mapPickerInitialLng = lng
+                        currentScreen = "map_picker"
+                    }
                 )
-                "edit_pg" -> AddPGScreen(
+                "edit_pg" -> AddPGScreenWithCoordinates(
                     initialPG = editingPG,
+                    selectedLatitude = pendingLatitude ?: editingPG?.latitude,
+                    selectedLongitude = pendingLongitude ?: editingPG?.longitude,
                     onSave = { updatedPg ->
                         pgs = pgs.map { if (it.id == editingPG?.id) updatedPg.copy(id = it.id, ownerId = it.ownerId, isVerified = it.isVerified) else it }
+                        pendingLatitude = null
+                        pendingLongitude = null
                         currentScreen = "manage_pgs"
                     },
-                    onBack = { currentScreen = "manage_pgs" }
+                    onBack = { 
+                        pendingLatitude = null
+                        pendingLongitude = null
+                        currentScreen = "manage_pgs" 
+                    },
+                    onPickLocation = { lat, lng ->
+                        mapPickerReturnScreen = "edit_pg"
+                        mapPickerInitialLat = lat
+                        mapPickerInitialLng = lng
+                        currentScreen = "map_picker"
+                    }
+                )
+                "map_picker" -> MapPickerScreen(
+                    initialLatitude = mapPickerInitialLat,
+                    initialLongitude = mapPickerInitialLng,
+                    onLocationSelected = { lat, lng ->
+                        pendingLatitude = lat
+                        pendingLongitude = lng
+                        currentScreen = mapPickerReturnScreen
+                    },
+                    onBack = {
+                        currentScreen = mapPickerReturnScreen
+                    }
                 )
                 "manage_pgs" -> ManagePGsScreen(
                     pgs = pgs,
                     currentUser = currentUser,
-                    onEdit = { pg -> editingPG = pg; currentScreen = "edit_pg" },
+                    onEdit = { pg -> 
+                        editingPG = pg
+                        pendingLatitude = null
+                        pendingLongitude = null
+                        currentScreen = "edit_pg" 
+                    },
                     onBack = { currentScreen = "profile" }
                 )
                 "pg_details" -> selectedPG?.let { pg ->

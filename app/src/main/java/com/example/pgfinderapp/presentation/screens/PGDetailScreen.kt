@@ -63,23 +63,61 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
 
                     Text("Address", fontWeight = FontWeight.Bold)
                     Text(pg.address, color = Color.DarkGray)
-
-                    pg.mapLink?.let { link ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(
+                    
+                    // Location button (opens external maps)
+                    if (pg.latitude != null && pg.longitude != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        OutlinedButton(
                             onClick = {
+                                val uri = Uri.parse("geo:${pg.latitude},${pg.longitude}?q=${pg.latitude},${pg.longitude}(${Uri.encode(pg.name)})")
+                                val intent = Intent(Intent.ACTION_VIEW, uri)
                                 try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
-                                    // Handle error
+                                    // No maps app available - try web
+                                    val webUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${pg.latitude},${pg.longitude}")
+                                    val webIntent = Intent(Intent.ACTION_VIEW, webUri)
+                                    try {
+                                        context.startActivity(webIntent)
+                                    } catch (e2: Exception) {
+                                        // No browser either
+                                    }
                                 }
                             },
-                            contentPadding = PaddingValues(0.dp)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("View on Maps")
+                            Icon(Icons.Default.LocationOn, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("View on Maps / Get Directions")
+                        }
+                        
+                        Text(
+                            "Location: %.4f, %.4f".format(pg.latitude, pg.longitude),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                        )
+                    }
+
+                    pg.mapLink?.let { link ->
+                        if (pg.latitude == null || pg.longitude == null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        // Handle error
+                                    }
+                                },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("View on Maps")
+                            }
                         }
                     }
 
@@ -171,7 +209,7 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                         onClick = { showMoreImages = !showMoreImages },
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
-                        Icon(Icons.Default.Face, contentDescription = null) // Changed from Icons.Default.Image
+                        Icon(Icons.Default.Face, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(if (showMoreImages) "Hide images" else "Show more images")
                     }
@@ -189,7 +227,7 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                                     modifier = Modifier.weight(1f).height(120.dp).background(Color.LightGray, RoundedCornerShape(8.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Face, contentDescription = null, tint = Color.Gray) // Changed from Icons.Default.Image
+                                    Icon(Icons.Default.Face, contentDescription = null, tint = Color.Gray)
                                 }
                             }
                             if (rowImages.size == 1) {
