@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pgfinderapp.data.model.*
 import com.example.pgfinderapp.presentation.screens.*
 
@@ -34,10 +35,18 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PGFinderApp() {
+    // ViewModels
+    val authViewModel: AuthViewModel = viewModel()
+    val pgViewModel: PGViewModel = viewModel()
+    
     var currentScreen by remember { mutableStateOf("guest_home") }
-    var currentUser by remember { mutableStateOf<User?>(null) }
-    var users by remember { mutableStateOf(initialUsers) }
-    var pgs by remember { mutableStateOf(initialPGs) }
+    val authState = authViewModel.authState
+    val pgState = pgViewModel.pgState
+    
+    // Use Firebase user instead of local state
+    val currentUser = authState.currentUser
+    val pgs = pgState.pgs
+    
     var selectedPG by remember { mutableStateOf<PG?>(null) }
     var editingPG by remember { mutableStateOf<PG?>(null) }
     var showLoginDialog by remember { mutableStateOf(false) }
@@ -112,16 +121,12 @@ fun PGFinderApp() {
                     if (comment.isNotBlank() && currentUser != null) {
                         val review = Review(
                             id = System.currentTimeMillis().toString(),
-                            userId = currentUser!!.id,
-                            userName = currentUser!!.name,
+                            userId = currentUser.id,
+                            userName = currentUser.name,
                             rating = rating,
                             comment = comment
                         )
-                        val updatedPg = reviewingPG!!.copy(
-                            reviews = reviewingPG!!.reviews + review,
-                            rating = (reviewingPG!!.reviews.sumOf { it.rating } + review.rating).toDouble() / (reviewingPG!!.reviews.size + 1)
-                        )
-                        pgs = pgs.map { if (it.id == updatedPg.id) updatedPg else it }
+                        pgViewModel.addReview(reviewingPG!!.id, review)
                         showReviewDialog = false
                         reviewingPG = null
                     }
@@ -183,26 +188,21 @@ fun PGFinderApp() {
                     onNavigate = { currentScreen = it }
                 )
                 "login" -> LoginScreen(
-                    users = users,
-                    onLogin = { user ->
-                        currentUser = user
+                    authViewModel = authViewModel,
+                    onLoginSuccess = { user ->
                         currentScreen = if (user.role == Role.OWNER) "owner_home" else "guest_home"
                     },
                     onNavigate = { currentScreen = it }
                 )
                 "signup" -> SignupScreen(
-                    onSignup = { user ->
-                        users = users + user
-                        currentUser = user
+                    authViewModel = authViewModel,
+                    onSignupSuccess = { user ->
                         currentScreen = if (user.role == Role.OWNER) "owner_home" else "guest_home"
                     },
                     onNavigate = { currentScreen = it }
                 )
                 "forgot_password" -> ForgotPasswordScreen(
-                    users = users,
-                    onUpdatePassword = { email, newPass ->
-                        users = users.map { if (it.email == email) it.copy(password = newPass) else it }
-                    },
+                    authViewModel = authViewModel,
                     onNavigate = { currentScreen = it }
                 )
                 "guest_home" -> GuestHomeScreen(
@@ -230,14 +230,17 @@ fun PGFinderApp() {
                     selectedLatitude = pendingLatitude,
                     selectedLongitude = pendingLongitude,
                     onSave = { newPg ->
-                        pgs = pgs + newPg.copy(
+                        val pgToSave = newPg.copy(
                             id = System.currentTimeMillis().toString(),
                             ownerId = currentUser!!.id,
-                            isVerified = currentUser?.role == Role.OWNER
+                            ownerName = currentUser.name,
+                            ownerEmail = currentUser.email,
+                            isVerified = currentUser.role == Role.OWNER
                         )
+                        pgViewModel.addPG(pgToSave)
                         pendingLatitude = null
                         pendingLongitude = null
-                        currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home"
+                        currentScreen = if (currentUser.role == Role.OWNER) "owner_home" else "guest_home"
                     },
                     onBack = { 
                         pendingLatitude = null
@@ -256,7 +259,12 @@ fun PGFinderApp() {
                     selectedLatitude = pendingLatitude ?: editingPG?.latitude,
                     selectedLongitude = pendingLongitude ?: editingPG?.longitude,
                     onSave = { updatedPg ->
-                        pgs = pgs.map { if (it.id == editingPG?.id) updatedPg.copy(id = it.id, ownerId = it.ownerId, isVerified = it.isVerified) else it }
+                        val pgToUpdate = updatedPg.copy(
+                            id = editingPG!!.id,
+                            ownerId = editingPG!!.ownerId,
+                            isVerified = editingPG!!.isVerified
+                        )
+                        pgViewModel.updatePG(pgToUpdate)
                         pendingLatitude = null
                         pendingLongitude = null
                         currentScreen = "manage_pgs"
@@ -297,24 +305,21 @@ fun PGFinderApp() {
                     onBack = { currentScreen = "profile" }
                 )
                 "pg_details" -> selectedPG?.let { pg ->
+                    // Get the latest version of the PG from the list
+                    val latestPG = pgs.find { it.id == pg.id } ?: pg
                     PGDetailScreen(
-                        pg = pg,
+                        pg = latestPG,
                         currentUser = currentUser,
                         onBack = { currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home" },
                         onAddReview = { review ->
-                            val updatedPg = pg.copy(
-                                reviews = pg.reviews + review,
-                                rating = (pg.reviews.sumOf { it.rating } + review.rating).toDouble() / (pg.reviews.size + 1)
-                            )
-                            pgs = pgs.map { if (it.id == pg.id) updatedPg else it }
-                            selectedPG = updatedPg
+                            pgViewModel.addReview(latestPG.id, review)
                         }
                     )
                 }
                 "profile" -> ProfileScreen(
                     user = currentUser,
                     onLogout = {
-                        currentUser = null
+                        authViewModel.logout()
                         currentScreen = "welcome"
                     },
                     onNavigate = { currentScreen = it }
