@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -58,4 +59,15 @@ dependencies {
     
     // Google Play Services Location for GPS
     implementation(libs.play.services.location)
+    
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.firestore.ktx)
+    
+    // Coroutines for Firebase
+    implementation(libs.kotlinx.coroutines.play.services)
+    
+    // ViewModel for Compose
+    implementation(libs.lifecycle.viewmodel.compose)
 }
