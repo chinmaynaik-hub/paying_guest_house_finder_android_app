@@ -27,7 +27,7 @@ import com.example.pgfinderapp.data.model.User
 import com.example.pgfinderapp.presentation.components.SmallTopAppBar
 
 @Composable
-fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: (Review) -> Unit) {
+fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: (Review) -> Unit, onLoginRequired: () -> Unit = {}) {
     var comment by remember { mutableStateOf("") }
     var rating by remember { mutableIntStateOf(5) }
     var showAddReview by remember { mutableStateOf(false) }
@@ -148,17 +148,21 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("Reviews", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        if (currentUser?.role == Role.GUEST) {
-                            IconButton(onClick = { showAddReview = !showAddReview }) {
-                                Icon(
-                                    imageVector = if (showAddReview) Icons.Default.Close else Icons.Default.Add,
-                                    contentDescription = "Add Review"
-                                )
+                        IconButton(onClick = { 
+                            if (currentUser != null) {
+                                showAddReview = !showAddReview
+                            } else {
+                                onLoginRequired()
                             }
+                        }) {
+                            Icon(
+                                imageVector = if (showAddReview) Icons.Default.Close else Icons.Default.Add,
+                                contentDescription = "Add Review"
+                            )
                         }
                     }
 
-                    if (showAddReview && currentUser?.role == Role.GUEST) {
+                    if (showAddReview && currentUser != null) {
                         Column(modifier = Modifier.padding(vertical = 8.dp)) {
                             Text("Your Rating:", fontWeight = FontWeight.Medium)
                             Row(modifier = Modifier.padding(vertical = 4.dp)) {

@@ -28,10 +28,9 @@ import java.util.Locale
 fun PGCard(
     pg: PG, 
     onClick: () -> Unit,
-    onAddReviewClick: () -> Unit = {},
     userLatitude: Double? = null,
     userLongitude: Double? = null
-) {
+){
     // Calculate distance if user location and PG coordinates are available
     val distanceText = if (userLatitude != null && userLongitude != null && 
                           pg.latitude != null && pg.longitude != null) {
@@ -109,28 +108,7 @@ fun PGCard(
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Reviews", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    // The + button for reviews
-                    FilledIconButton(
-                        onClick = { onAddReviewClick() },
-                        modifier = Modifier.size(28.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Add, 
-                            contentDescription = "Add Review", 
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                Text("Reviews", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 
                 if (pg.reviews.isNotEmpty()) {
                     pg.reviews.takeLast(1).forEach { review ->

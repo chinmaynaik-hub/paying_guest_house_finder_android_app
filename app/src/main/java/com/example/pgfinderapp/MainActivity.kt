@@ -207,15 +207,7 @@ fun PGFinderApp() {
                 )
                 "guest_home" -> GuestHomeScreen(
                     pgs = pgs,
-                    onSelectPG = { pg -> selectedPG = pg; currentScreen = "pg_details" },
-                    onAddReviewClick = { pg ->
-                        if (isLoggedIn) {
-                            reviewingPG = pg
-                            showReviewDialog = true
-                        } else {
-                            showLoginDialog = true
-                        }
-                    }
+                    onSelectPG = { pg -> selectedPG = pg; currentScreen = "pg_details" }
                 )
                 "owner_home" -> OwnerHomeScreen(
                     pgs = pgs.filter { it.ownerId == currentUser?.id },
@@ -313,7 +305,8 @@ fun PGFinderApp() {
                         onBack = { currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home" },
                         onAddReview = { review ->
                             pgViewModel.addReview(latestPG.id, review)
-                        }
+                        },
+                        onLoginRequired = { showLoginDialog = true }
                     )
                 }
                 "profile" -> ProfileScreen(

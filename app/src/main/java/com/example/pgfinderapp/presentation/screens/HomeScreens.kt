@@ -29,9 +29,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun GuestHomeScreen(
     pgs: List<PG>, 
-    onSelectPG: (PG) -> Unit,
-    onAddReviewClick: (PG) -> Unit = {}
-) {
+    onSelectPG: (PG) -> Unit
+){
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -136,10 +135,9 @@ fun GuestHomeScreen(
                 PGCard(
                     pg = pg, 
                     onClick = { onSelectPG(pg) },
-                    onAddReviewClick = { onAddReviewClick(pg) },
                     userLatitude = userLatitude,
                     userLongitude = userLongitude
-                ) 
+                )
             }
         }
     }
