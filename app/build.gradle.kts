@@ -64,10 +64,17 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.storage.ktx)
     
     // Coroutines for Firebase
     implementation(libs.kotlinx.coroutines.play.services)
     
     // ViewModel for Compose
     implementation(libs.lifecycle.viewmodel.compose)
+    
+    // Coil for image loading
+    implementation(libs.coil.compose)
+    
+    // ExifInterface for image rotation handling
+    implementation(libs.androidx.exifinterface)
 }

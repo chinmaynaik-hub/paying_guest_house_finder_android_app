@@ -1,27 +1,44 @@
 package com.example.pgfinderapp.presentation.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.pgfinderapp.data.model.ACType
 import com.example.pgfinderapp.data.model.FoodType
+import com.example.pgfinderapp.data.model.ImageUtils
 import com.example.pgfinderapp.data.model.PG
 import com.example.pgfinderapp.presentation.components.SmallTopAppBar
+import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
 fun AddPGScreen(
@@ -30,6 +47,9 @@ fun AddPGScreen(
     onBack: () -> Unit,
     onPickLocation: (currentLat: Double?, currentLng: Double?) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
     var ownerName by remember { mutableStateOf(initialPG?.ownerName ?: "") }
     var ownerPhone by remember { mutableStateOf(initialPG?.ownerPhone ?: "") }
     var ownerEmail by remember { mutableStateOf(initialPG?.ownerEmail ?: "") }
@@ -43,11 +63,24 @@ fun AddPGScreen(
     var acType by remember { mutableStateOf(initialPG?.acType?.name ?: "BOTH") }
     var foodType by remember { mutableStateOf(initialPG?.foodType?.name ?: "BOTH") }
     var beds by remember { mutableStateOf(initialPG?.bedsInRoom?.toString() ?: "") }
-    var images by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else listOf("https://picsum.photos/seed/newpg/600/400")) }
+    
+    // Image handling - store both URIs (local) and URLs (uploaded)
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var uploadedImageUrls by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else emptyList()) }
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf("") }
+    
     var mapLink by remember { mutableStateOf(initialPG?.mapLink ?: "") }
     var rules by remember { mutableStateOf(initialPG?.rules ?: "") }
     var latitude by remember { mutableStateOf(initialPG?.latitude) }
     var longitude by remember { mutableStateOf(initialPG?.longitude) }
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        selectedImageUris = selectedImageUris + uris
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SmallTopAppBar(
@@ -152,55 +185,141 @@ fun AddPGScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Image URLs", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                IconButton(onClick = { images = images + "" }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Image")
-                }
-            }
-            images.forEachIndexed { index, url ->
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = url,
-                        onValueChange = { newUrl ->
-                            val newImages = images.toMutableList()
-                            newImages[index] = newUrl
-                            images = newImages
-                        },
-                        label = { Text("Image URL ${index + 1}") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (images.size > 1) {
-                        IconButton(onClick = {
-                            val newImages = images.toMutableList()
-                            newImages.removeAt(index)
-                            images = newImages
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Remove Image", tint = Color.Red)
+            Text("Images", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Image picker section
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Show already uploaded images (URLs)
+                items(uploadedImageUrls) { url ->
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "PG Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { uploadedImageUrls = uploadedImageUrls - url },
+                            modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                tint = Color.White,
+                                modifier = Modifier.background(Color.Red.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                            )
                         }
                     }
                 }
+                
+                // Show selected local images (URIs)
+                items(selectedImageUris) { uri ->
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "Selected Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { selectedImageUris = selectedImageUris - uri },
+                            modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                tint = Color.White,
+                                modifier = Modifier.background(Color.Red.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                            )
+                        }
+                    }
+                }
+                
+                // Add image button
+                item {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                            .clickable { imagePickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Image",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Text("Add", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+            
+            if (isUploading) {
                 Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(uploadProgress, fontSize = 12.sp, color = Color.Gray)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = {
                     if (ownerName.isNotBlank() && ownerPhone.isNotBlank() && ownerEmail.isNotBlank() && name.isNotBlank() && location.isNotBlank() && address.isNotBlank() && capacity.isNotBlank() && availableBeds.isNotBlank() && cost.isNotBlank() && beds.isNotBlank()) {
-                        onSave(PG(
-                            id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
-                            name = name, address = address, location = location,
-                            latitude = latitude, longitude = longitude,
-                            capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
-                            acType = ACType.valueOf(acType),
-                            bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = images.filter { it.isNotBlank() }, reviews = listOf(), isVerified = false,
-                            mapLink = mapLink.takeIf { it.isNotBlank() },
-                            rules = rules.takeIf { it.isNotBlank() }
-                        ))
+                        // Upload images first if there are any selected
+                        if (selectedImageUris.isNotEmpty()) {
+                            isUploading = true
+                            scope.launch {
+                                val tempPgId = UUID.randomUUID().toString()
+                                uploadProgress = "Compressing and uploading images..."
+                                val newUrls = ImageUtils.uploadMultipleImages(context, selectedImageUris, tempPgId)
+                                val allImages = uploadedImageUrls + newUrls
+                                isUploading = false
+                                
+                                onSave(PG(
+                                    id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
+                                    name = name, address = address, location = location,
+                                    latitude = latitude, longitude = longitude,
+                                    capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
+                                    acType = ACType.valueOf(acType),
+                                    bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = allImages, reviews = listOf(), isVerified = false,
+                                    mapLink = mapLink.takeIf { it.isNotBlank() },
+                                    rules = rules.takeIf { it.isNotBlank() }
+                                ))
+                            }
+                        } else {
+                            onSave(PG(
+                                id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
+                                name = name, address = address, location = location,
+                                latitude = latitude, longitude = longitude,
+                                capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
+                                acType = ACType.valueOf(acType),
+                                bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = uploadedImageUrls, reviews = listOf(), isVerified = false,
+                                mapLink = mapLink.takeIf { it.isNotBlank() },
+                                rules = rules.takeIf { it.isNotBlank() }
+                            ))
+                        }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) { Text("Save Property") }
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                enabled = !isUploading
+            ) { Text(if (isUploading) "Uploading..." else "Save Property") }
         }
     }
 }
@@ -218,6 +337,9 @@ fun AddPGScreenWithCoordinates(
     var latitude by remember(selectedLatitude) { mutableStateOf(selectedLatitude ?: initialPG?.latitude) }
     var longitude by remember(selectedLongitude) { mutableStateOf(selectedLongitude ?: initialPG?.longitude) }
     
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
     var ownerName by remember { mutableStateOf(initialPG?.ownerName ?: "") }
     var ownerPhone by remember { mutableStateOf(initialPG?.ownerPhone ?: "") }
     var ownerEmail by remember { mutableStateOf(initialPG?.ownerEmail ?: "") }
@@ -231,9 +353,22 @@ fun AddPGScreenWithCoordinates(
     var acType by remember { mutableStateOf(initialPG?.acType?.name ?: "BOTH") }
     var foodType by remember { mutableStateOf(initialPG?.foodType?.name ?: "BOTH") }
     var beds by remember { mutableStateOf(initialPG?.bedsInRoom?.toString() ?: "") }
-    var images by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else listOf("https://picsum.photos/seed/newpg/600/400")) }
+    
+    // Image handling
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var uploadedImageUrls by remember { mutableStateOf(if (initialPG != null && initialPG.images.isNotEmpty()) initialPG.images else emptyList()) }
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf("") }
+    
     var mapLink by remember { mutableStateOf(initialPG?.mapLink ?: "") }
     var rules by remember { mutableStateOf(initialPG?.rules ?: "") }
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        selectedImageUris = selectedImageUris + uris
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SmallTopAppBar(
@@ -338,55 +473,141 @@ fun AddPGScreenWithCoordinates(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Image URLs", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                IconButton(onClick = { images = images + "" }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Image")
-                }
-            }
-            images.forEachIndexed { index, url ->
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = url,
-                        onValueChange = { newUrl ->
-                            val newImages = images.toMutableList()
-                            newImages[index] = newUrl
-                            images = newImages
-                        },
-                        label = { Text("Image URL ${index + 1}") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (images.size > 1) {
-                        IconButton(onClick = {
-                            val newImages = images.toMutableList()
-                            newImages.removeAt(index)
-                            images = newImages
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Remove Image", tint = Color.Red)
+            Text("Images", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Image picker section
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Show already uploaded images (URLs)
+                items(uploadedImageUrls) { url ->
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "PG Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { uploadedImageUrls = uploadedImageUrls - url },
+                            modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                tint = Color.White,
+                                modifier = Modifier.background(Color.Red.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                            )
                         }
                     }
                 }
+                
+                // Show selected local images (URIs)
+                items(selectedImageUris) { uri ->
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "Selected Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { selectedImageUris = selectedImageUris - uri },
+                            modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove",
+                                tint = Color.White,
+                                modifier = Modifier.background(Color.Red.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                            )
+                        }
+                    }
+                }
+                
+                // Add image button
+                item {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                            .clickable { imagePickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Image",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Text("Add", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+            
+            if (isUploading) {
                 Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(uploadProgress, fontSize = 12.sp, color = Color.Gray)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = {
                     if (ownerName.isNotBlank() && ownerPhone.isNotBlank() && ownerEmail.isNotBlank() && name.isNotBlank() && location.isNotBlank() && address.isNotBlank() && capacity.isNotBlank() && availableBeds.isNotBlank() && cost.isNotBlank() && beds.isNotBlank()) {
-                        onSave(PG(
-                            id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
-                            name = name, address = address, location = location,
-                            latitude = latitude, longitude = longitude,
-                            capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
-                            acType = ACType.valueOf(acType),
-                            bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = images.filter { it.isNotBlank() }, reviews = listOf(), isVerified = false,
-                            mapLink = mapLink.takeIf { it.isNotBlank() },
-                            rules = rules.takeIf { it.isNotBlank() }
-                        ))
+                        // Upload images first if there are any selected
+                        if (selectedImageUris.isNotEmpty()) {
+                            isUploading = true
+                            scope.launch {
+                                val tempPgId = UUID.randomUUID().toString()
+                                uploadProgress = "Compressing and uploading images..."
+                                val newUrls = ImageUtils.uploadMultipleImages(context, selectedImageUris, tempPgId)
+                                val allImages = uploadedImageUrls + newUrls
+                                isUploading = false
+                                
+                                onSave(PG(
+                                    id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
+                                    name = name, address = address, location = location,
+                                    latitude = latitude, longitude = longitude,
+                                    capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
+                                    acType = ACType.valueOf(acType),
+                                    bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = allImages, reviews = listOf(), isVerified = false,
+                                    mapLink = mapLink.takeIf { it.isNotBlank() },
+                                    rules = rules.takeIf { it.isNotBlank() }
+                                ))
+                            }
+                        } else {
+                            onSave(PG(
+                                id = "", ownerId = "", ownerName = ownerName, ownerPhone = ownerPhone, ownerEmail = ownerEmail, alternatePhone = alternatePhone.takeIf { it.isNotBlank() },
+                                name = name, address = address, location = location,
+                                latitude = latitude, longitude = longitude,
+                                capacity = capacity.toIntOrNull() ?: 10, availableBeds = availableBeds.toIntOrNull() ?: 0, costPerMonth = cost.toIntOrNull() ?: 0, foodType = FoodType.valueOf(foodType),
+                                acType = ACType.valueOf(acType),
+                                bedsInRoom = beds.toIntOrNull() ?: 1, rating = 0.0, images = uploadedImageUrls, reviews = listOf(), isVerified = false,
+                                mapLink = mapLink.takeIf { it.isNotBlank() },
+                                rules = rules.takeIf { it.isNotBlank() }
+                            ))
+                        }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) { Text("Save Property") }
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                enabled = !isUploading
+            ) { Text(if (isUploading) "Uploading..." else "Save Property") }
         }
     }
 }
