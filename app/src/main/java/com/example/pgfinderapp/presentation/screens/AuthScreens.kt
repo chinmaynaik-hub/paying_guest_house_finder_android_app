@@ -80,10 +80,12 @@ fun LoginScreen(
             }
 
             OutlinedTextField(
-                value = email, onValueChange = { email = it },
+                value = email, onValueChange = { email = it.trim() },
                 label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !authState.isLoading
+                enabled = !authState.isLoading,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true
             )
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
@@ -91,7 +93,8 @@ fun LoginScreen(
                 label = { Text("Password") },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !authState.isLoading
+                enabled = !authState.isLoading,
+                singleLine = true
             )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -104,7 +107,7 @@ fun LoginScreen(
             Button(
                 onClick = {
                     if (email.isNotBlank() && password.isNotBlank()) {
-                        authViewModel.login(email, password)
+                        authViewModel.login(email.trim().lowercase(), password)
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -167,10 +170,12 @@ fun SignupScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
-            value = email, onValueChange = { email = it },
+            value = email, onValueChange = { email = it.trim() },
             label = { Text("Email Address") },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !authState.isLoading
+            enabled = !authState.isLoading,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
@@ -178,7 +183,8 @@ fun SignupScreen(
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            enabled = !authState.isLoading
+            enabled = !authState.isLoading,
+            singleLine = true
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
@@ -212,7 +218,7 @@ fun SignupScreen(
         Button(
             onClick = {
                 if (name.isNotBlank() && email.isNotBlank() && password.isNotBlank() && age.isNotBlank()) {
-                    authViewModel.signup(name, age.toIntOrNull() ?: 18, email, password, role)
+                    authViewModel.signup(name.trim(), age.toIntOrNull() ?: 18, email.trim().lowercase(), password, role)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),

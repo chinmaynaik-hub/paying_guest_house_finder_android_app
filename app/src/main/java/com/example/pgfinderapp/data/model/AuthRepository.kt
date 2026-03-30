@@ -26,7 +26,7 @@ class AuthRepository {
     suspend fun login(email: String, password: String): AuthResult {
         return try {
             Log.d(TAG, "Attempting login for email: $email")
-            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val result = auth.signInWithEmailAndPassword(email.trim().lowercase(), password).await()
             result.user?.let { firebaseUser ->
                 Log.d(TAG, "Firebase login successful, uid: ${firebaseUser.uid}")
                 val user = getUserFromFirestore(firebaseUser.uid)
@@ -40,7 +40,17 @@ class AuthRepository {
             } ?: AuthResult.Error("Login failed")
         } catch (e: Exception) {
             Log.e(TAG, "Login error: ${e.message}", e)
-            AuthResult.Error(e.message ?: "Login failed")
+            val errorMessage = when {
+                e.message?.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) == true ||
+                e.message?.contains("invalid", ignoreCase = true) == true ->
+                    "Invalid email or password. Please check your credentials or use 'Forgot Password' to reset."
+                e.message?.contains("no user record", ignoreCase = true) == true ->
+                    "No account found with this email. Please sign up first."
+                e.message?.contains("network", ignoreCase = true) == true ->
+                    "Network error. Please check your internet connection."
+                else -> e.message ?: "Login failed"
+            }
+            AuthResult.Error(errorMessage)
         }
     }
     
@@ -52,16 +62,17 @@ class AuthRepository {
         role: Role
     ): AuthResult {
         return try {
-            Log.d(TAG, "Attempting signup for email: $email")
-            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val normalizedEmail = email.trim().lowercase()
+            Log.d(TAG, "Attempting signup for email: $normalizedEmail")
+            val result = auth.createUserWithEmailAndPassword(normalizedEmail, password).await()
             result.user?.let { firebaseUser ->
                 Log.d(TAG, "Firebase account created, uid: ${firebaseUser.uid}")
                 val user = User(
                     id = firebaseUser.uid,
-                    name = name,
+                    name = name.trim(),
                     age = age,
                     role = role,
-                    email = email,
+                    email = normalizedEmail,
                     password = ""
                 )
                 Log.d(TAG, "Saving user to Firestore...")
@@ -74,7 +85,16 @@ class AuthRepository {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Signup error: ${e.message}", e)
-            AuthResult.Error(e.message ?: "Signup failed")
+            val errorMessage = when {
+                e.message?.contains("email address is already in use", ignoreCase = true) == true ->
+                    "This email is already registered. Please login or use 'Forgot Password'."
+                e.message?.contains("weak password", ignoreCase = true) == true ->
+                    "Password is too weak. Please use at least 6 characters."
+                e.message?.contains("invalid email", ignoreCase = true) == true ->
+                    "Please enter a valid email address."
+                else -> e.message ?: "Signup failed"
+            }
+            AuthResult.Error(errorMessage)
         }
     }
     
