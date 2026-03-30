@@ -113,6 +113,12 @@ class PGRepository {
     suspend fun addReview(pgId: String, review: Review): PGResult<Unit> {
         return try {
             val pg = getPGById(pgId) ?: return PGResult.Error("PG not found")
+            
+            // Check if user already has a review
+            if (pg.reviews.any { it.userId == review.userId }) {
+                return PGResult.Error("You have already reviewed this PG")
+            }
+            
             val updatedReviews = pg.reviews + review
             val newRating = updatedReviews.map { it.rating }.average()
             
@@ -126,6 +132,30 @@ class PGRepository {
             PGResult.Success(Unit)
         } catch (e: Exception) {
             PGResult.Error(e.message ?: "Failed to add review")
+        }
+    }
+    
+    // Delete review from PG
+    suspend fun deleteReview(pgId: String, reviewId: String): PGResult<Unit> {
+        return try {
+            val pg = getPGById(pgId) ?: return PGResult.Error("PG not found")
+            val updatedReviews = pg.reviews.filter { it.id != reviewId }
+            val newRating = if (updatedReviews.isNotEmpty()) {
+                updatedReviews.map { it.rating }.average()
+            } else {
+                0.0
+            }
+            
+            pgsCollection.document(pgId).update(
+                mapOf(
+                    "reviews" to updatedReviews.map { reviewToMap(it) },
+                    "rating" to newRating
+                )
+            ).await()
+            
+            PGResult.Success(Unit)
+        } catch (e: Exception) {
+            PGResult.Error(e.message ?: "Failed to delete review")
         }
     }
     

@@ -27,12 +27,24 @@ import com.example.pgfinderapp.data.model.User
 import com.example.pgfinderapp.presentation.components.SmallTopAppBar
 
 @Composable
-fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: (Review) -> Unit, onLoginRequired: () -> Unit = {}) {
+fun PGDetailScreen(
+    pg: PG, 
+    currentUser: User?, 
+    onBack: () -> Unit, 
+    onAddReview: (Review) -> Unit, 
+    onDeleteReview: (String) -> Unit = {},
+    onLoginRequired: () -> Unit = {}
+) {
     var comment by remember { mutableStateOf("") }
     var rating by remember { mutableIntStateOf(5) }
     var showAddReview by remember { mutableStateOf(false) }
     var showMoreImages by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    
+    // Check if current user already has a review
+    val userReview = currentUser?.let { user ->
+        pg.reviews.find { it.userId == user.id }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SmallTopAppBar(
@@ -148,21 +160,24 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("Reviews", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        IconButton(onClick = { 
-                            if (currentUser != null) {
-                                showAddReview = !showAddReview
-                            } else {
-                                onLoginRequired()
+                        // Only show add button if user hasn't already reviewed
+                        if (userReview == null) {
+                            IconButton(onClick = { 
+                                if (currentUser != null) {
+                                    showAddReview = !showAddReview
+                                } else {
+                                    onLoginRequired()
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = if (showAddReview) Icons.Default.Close else Icons.Default.Add,
+                                    contentDescription = "Add Review"
+                                )
                             }
-                        }) {
-                            Icon(
-                                imageVector = if (showAddReview) Icons.Default.Close else Icons.Default.Add,
-                                contentDescription = "Add Review"
-                            )
                         }
                     }
 
-                    if (showAddReview && currentUser != null) {
+                    if (showAddReview && currentUser != null && userReview == null) {
                         Column(modifier = Modifier.padding(vertical = 8.dp)) {
                             Text("Your Rating:", fontWeight = FontWeight.Medium)
                             Row(modifier = Modifier.padding(vertical = 4.dp)) {
@@ -195,11 +210,30 @@ fun PGDetailScreen(pg: PG, currentUser: User?, onBack: () -> Unit, onAddReview: 
             }
             items(pg.reviews) { review ->
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(review.userName, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
                         Text(review.rating.toString(), fontSize = 12.sp)
+                        
+                        // Show delete button for user's own review
+                        if (currentUser != null && review.userId == currentUser.id) {
+                            Spacer(modifier = Modifier.weight(1f))
+                            IconButton(
+                                onClick = { onDeleteReview(review.id) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete, 
+                                    contentDescription = "Delete Review",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                     Text(review.comment, color = Color.DarkGray)
                     HorizontalDivider(modifier = Modifier.padding(top = 8.dp))

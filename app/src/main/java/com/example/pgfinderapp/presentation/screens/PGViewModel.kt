@@ -177,6 +177,31 @@ class PGViewModel : ViewModel() {
         }
     }
     
+    fun deleteReview(pgId: String, reviewId: String) {
+        viewModelScope.launch {
+            pgState = pgState.copy(isLoading = true, error = null)
+            
+            when (val result = pgRepository.deleteReview(pgId, reviewId)) {
+                is PGResult.Success -> {
+                    val updatedPG = pgRepository.getPGById(pgId)
+                    pgState = pgState.copy(
+                        isLoading = false,
+                        selectedPG = updatedPG
+                    )
+                }
+                is PGResult.Error -> {
+                    pgState = pgState.copy(
+                        isLoading = false,
+                        error = result.message
+                    )
+                }
+                PGResult.Loading -> {
+                    pgState = pgState.copy(isLoading = true)
+                }
+            }
+        }
+    }
+    
     fun uploadSampleData() {
         viewModelScope.launch {
             pgRepository.uploadSampleData()

@@ -306,6 +306,9 @@ fun PGFinderApp() {
                         onAddReview = { review ->
                             pgViewModel.addReview(latestPG.id, review)
                         },
+                        onDeleteReview = { reviewId ->
+                            pgViewModel.deleteReview(latestPG.id, reviewId)
+                        },
                         onLoginRequired = { showLoginDialog = true }
                     )
                 }
