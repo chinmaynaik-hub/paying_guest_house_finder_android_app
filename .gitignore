@@ -15,6 +15,7 @@
 /.idea/gradle.xml
 /.github
 .env
+app/google-services.json
 
 # Build output
 /build
