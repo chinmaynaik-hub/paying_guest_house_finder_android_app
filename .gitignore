@@ -16,6 +16,8 @@
 /.github
 .env
 app/google-services.json
+/app/crashlytics-build.properties
+secrets.properties
 
 # Build output
 /build
