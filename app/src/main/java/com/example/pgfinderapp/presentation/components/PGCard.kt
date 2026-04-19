@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
@@ -15,13 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pgfinderapp.data.model.DistanceUtils
 import com.example.pgfinderapp.data.model.PG
+import com.example.pgfinderapp.data.model.initialPGs
+import com.example.pgfinderapp.ui.theme.PgFinderAppTheme
 import java.util.Locale
 
 @Composable
@@ -98,41 +98,26 @@ fun PGCard(
                     }
                 }
                 Text(pg.location, color = Color.Gray, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${pg.bedsInRoom} Sharing • ${pg.foodType.displayName} • ${pg.acType.displayName}", fontSize = 14.sp, color = Color.DarkGray)
-                    Text("₹${pg.costPerMonth}/mo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
-                Spacer(modifier = Modifier.height(8.dp))
                 
-                Text("Reviews", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("₹${pg.costPerMonth}/mo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 
-                if (pg.reviews.isNotEmpty()) {
-                    pg.reviews.takeLast(1).forEach { review ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically, 
-                            modifier = Modifier.padding(top = 6.dp)
-                        ) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(12.dp))
-                            Text(text = review.rating.toString(), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = review.comment,
-                                fontSize = 12.sp,
-                                color = Color.Gray,
-                                fontStyle = FontStyle.Italic,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                } else {
-                    Text("No reviews yet", fontSize = 12.sp, color = Color.LightGray, fontStyle = FontStyle.Italic, modifier = Modifier.padding(top = 4.dp))
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("${pg.bedsInRoom} Sharing • ${pg.foodType.displayName} • ${pg.acType.displayName}", fontSize = 14.sp, color = Color.DarkGray)
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PGCardPreview() {
+    PgFinderAppTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            PGCard(
+                pg = initialPGs[0],
+                onClick = {}
+            )
         }
     }
 }

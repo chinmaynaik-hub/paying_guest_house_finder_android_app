@@ -121,11 +121,12 @@ fun PGFinderApp() {
             },
             confirmButton = {
                 Button(onClick = {
-                    if (comment.isNotBlank() && currentUser != null) {
+                    val user = currentUser
+                    if (comment.isNotBlank() && user != null) {
                         val review = Review(
                             id = System.currentTimeMillis().toString(),
-                            userId = currentUser.id,
-                            userName = currentUser.name,
+                            userId = user.id,
+                            userName = user.name,
                             rating = rating,
                             comment = comment
                         )
@@ -226,18 +227,24 @@ fun PGFinderApp() {
                     selectedLatitude = pendingLatitude,
                     selectedLongitude = pendingLongitude,
                     onSave = { newPg ->
-                        val pgToSave = newPg.copy(
-                            id = System.currentTimeMillis().toString(),
-                            ownerId = currentUser!!.id,
-                            ownerName = currentUser.name,
-                            ownerEmail = currentUser.email,
-                            isVerified = currentUser.role == Role.OWNER
-                        )
-                        pgViewModel.addPG(pgToSave)
-                        pendingLatitude = null
-                        pendingLongitude = null
-                        pendingPGFormData = null
-                        currentScreen = if (currentUser.role == Role.OWNER) "owner_home" else "guest_home"
+                        val user = currentUser
+                        if (user != null) {
+                            val pgToSave = newPg.copy(
+                                id = System.currentTimeMillis().toString(),
+                                ownerId = user.id,
+                                ownerName = user.name,
+                                ownerEmail = user.email,
+                                isVerified = user.role == Role.OWNER
+                            )
+                            pgViewModel.addPG(pgToSave)
+                            pendingLatitude = null
+                            pendingLongitude = null
+                            pendingPGFormData = null
+                            currentScreen = if (user.role == Role.OWNER) "owner_home" else "guest_home"
+                        } else {
+                            showLoginDialog = true
+                            currentScreen = "login"
+                        }
                     },
                     onBack = { 
                         pendingLatitude = null
