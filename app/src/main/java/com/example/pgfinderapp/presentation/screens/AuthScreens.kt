@@ -14,10 +14,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pgfinderapp.data.model.Role
 import com.example.pgfinderapp.data.model.User
+import com.example.pgfinderapp.ui.theme.PgFinderAppTheme
 
 @Composable
 fun WelcomeScreen(onNavigate: (String) -> Unit) {
@@ -47,9 +49,23 @@ fun LoginScreen(
     onLoginSuccess: (User) -> Unit,
     onNavigate: (String) -> Unit
 ) {
+    LoginContent(
+        authState = authViewModel.authState,
+        onLogin = { email, password -> authViewModel.login(email, password) },
+        onLoginSuccess = onLoginSuccess,
+        onNavigate = onNavigate
+    )
+}
+
+@Composable
+fun LoginContent(
+    authState: AuthState,
+    onLogin: (String, String) -> Unit,
+    onLoginSuccess: (User) -> Unit,
+    onNavigate: (String) -> Unit
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val authState = authViewModel.authState
     
     // Handle successful login
     LaunchedEffect(authState.isLoggedIn, authState.currentUser) {
@@ -107,7 +123,7 @@ fun LoginScreen(
             Button(
                 onClick = {
                     if (email.isNotBlank() && password.isNotBlank()) {
-                        authViewModel.login(email.trim().lowercase(), password)
+                        onLogin(email.trim().lowercase(), password)
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -137,12 +153,28 @@ fun SignupScreen(
     onSignupSuccess: (User) -> Unit,
     onNavigate: (String) -> Unit
 ) {
+    SignupContent(
+        authState = authViewModel.authState,
+        onSignup = { name, age, email, password, role -> 
+            authViewModel.signup(name, age, email, password, role)
+        },
+        onSignupSuccess = onSignupSuccess,
+        onNavigate = onNavigate
+    )
+}
+
+@Composable
+fun SignupContent(
+    authState: AuthState,
+    onSignup: (String, Int, String, String, Role) -> Unit,
+    onSignupSuccess: (User) -> Unit,
+    onNavigate: (String) -> Unit
+) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
     var role by remember { mutableStateOf(Role.GUEST) }
-    val authState = authViewModel.authState
     
     // Handle successful signup
     LaunchedEffect(authState.isLoggedIn, authState.currentUser) {
@@ -218,7 +250,7 @@ fun SignupScreen(
         Button(
             onClick = {
                 if (name.isNotBlank() && email.isNotBlank() && password.isNotBlank() && age.isNotBlank()) {
-                    authViewModel.signup(name.trim(), age.toIntOrNull() ?: 18, email.trim().lowercase(), password, role)
+                    onSignup(name.trim(), age.toIntOrNull() ?: 18, email.trim().lowercase(), password, role)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -242,13 +274,26 @@ fun ForgotPasswordScreen(
     authViewModel: AuthViewModel,
     onNavigate: (String) -> Unit
 ) {
+    ForgotPasswordContent(
+        authState = authViewModel.authState,
+        onSendResetEmail = { email -> authViewModel.sendPasswordResetEmail(email) },
+        onClearPasswordResetSent = { authViewModel.clearPasswordResetSent() },
+        onNavigate = onNavigate
+    )
+}
+
+@Composable
+fun ForgotPasswordContent(
+    authState: AuthState,
+    onSendResetEmail: (String) -> Unit,
+    onClearPasswordResetSent: () -> Unit,
+    onNavigate: (String) -> Unit
+) {
     var email by remember { mutableStateOf("") }
-    val authState = authViewModel.authState
     
-    // Handle successful password reset email
     LaunchedEffect(authState.passwordResetSent) {
         if (authState.passwordResetSent) {
-            authViewModel.clearPasswordResetSent()
+            onClearPasswordResetSent()
             onNavigate("login")
         }
     }
@@ -276,7 +321,7 @@ fun ForgotPasswordScreen(
         Button(
             onClick = {
                 if (email.isNotBlank()) {
-                    authViewModel.sendPasswordResetEmail(email)
+                    onSendResetEmail(email)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -292,5 +337,52 @@ fun ForgotPasswordScreen(
                 Text("Send Reset Email", fontSize = 18.sp)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun WelcomeScreenPreview() {
+    PgFinderAppTheme {
+        WelcomeScreen(onNavigate = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginContentPreview() {
+    PgFinderAppTheme {
+        LoginContent(
+            authState = AuthState(),
+            onLogin = { _, _ -> },
+            onLoginSuccess = {},
+            onNavigate = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SignupContentPreview() {
+    PgFinderAppTheme {
+        SignupContent(
+            authState = AuthState(),
+            onSignup = { _, _, _, _, _ -> },
+            onSignupSuccess = {},
+            onNavigate = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ForgotPasswordContentPreview() {
+    PgFinderAppTheme {
+        ForgotPasswordContent(
+            authState = AuthState(),
+            onSendResetEmail = {},
+            onClearPasswordResetSent = {},
+            onNavigate = {}
+        )
     }
 }
