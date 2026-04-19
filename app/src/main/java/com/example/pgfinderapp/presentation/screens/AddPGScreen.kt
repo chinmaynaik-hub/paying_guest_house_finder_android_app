@@ -28,6 +28,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -35,7 +37,9 @@ import com.example.pgfinderapp.data.model.ACType
 import com.example.pgfinderapp.data.model.FoodType
 import com.example.pgfinderapp.data.model.ImageUtils
 import com.example.pgfinderapp.data.model.PG
+import com.example.pgfinderapp.data.model.initialPGs
 import com.example.pgfinderapp.presentation.components.SmallTopAppBar
+import com.example.pgfinderapp.ui.theme.PgFinderAppTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -63,7 +67,14 @@ fun AddPGScreenWithCoordinates(
     var availableBeds by remember { mutableStateOf(initialPG?.availableBeds?.toString() ?: "") }
     var cost by remember { mutableStateOf(initialPG?.costPerMonth?.toString() ?: "") }
     var acType by remember { mutableStateOf(initialPG?.acType?.name ?: "BOTH") }
-    var foodType by remember { mutableStateOf(initialPG?.foodType?.name ?: "BOTH") }
+    var foodType by remember {
+        mutableStateOf(
+            initialPG?.foodType
+                ?.takeIf { it != FoodType.NONE }
+                ?.name
+                ?: FoodType.BOTH.name
+        )
+    }
     var beds by remember { mutableStateOf(initialPG?.bedsInRoom?.toString() ?: "") }
     
     // Image handling - store both URIs (local) and URLs (uploaded)
@@ -143,15 +154,23 @@ fun AddPGScreenWithCoordinates(
             
             Text("Food Available", fontWeight = FontWeight.Medium, modifier = Modifier.padding(vertical = 4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FoodType.entries.forEach { type ->
+                FoodType.entries.filter { it != FoodType.NONE }.forEach { type ->
                     OutlinedButton(
                         onClick = { foodType = type.name },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (foodType == type.name) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                         )
                     ) {
-                        Text(type.displayName, fontSize = 10.sp)
+                        Text(
+                            text = type.displayName,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -162,12 +181,20 @@ fun AddPGScreenWithCoordinates(
                 ACType.entries.forEach { type ->
                     OutlinedButton(
                         onClick = { acType = type.name },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (acType == type.name) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                         )
                     ) {
-                        Text(type.displayName, fontSize = 12.sp)
+                        Text(
+                            text = type.displayName,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -324,5 +351,30 @@ private fun ImageThumbnail(
                 modifier = Modifier.background(Color.Red.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddPGScreenPreview() {
+    PgFinderAppTheme {
+        AddPGScreenWithCoordinates(
+            onSave = {},
+            onBack = {},
+            onPickLocation = { _, _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EditPGScreenPreview() {
+    PgFinderAppTheme {
+        AddPGScreenWithCoordinates(
+            initialPG = initialPGs[0],
+            onSave = {},
+            onBack = {},
+            onPickLocation = { _, _, _ -> }
+        )
     }
 }
