@@ -61,6 +61,9 @@ fun PGFinderApp() {
     var mapPickerReturnScreen by remember { mutableStateOf("add_pg") }
     var mapPickerInitialLat by remember { mutableStateOf<Double?>(null) }
     var mapPickerInitialLng by remember { mutableStateOf<Double?>(null) }
+    
+    // Pending form data for Add PG (survives map picker navigation)
+    var pendingPGFormData by remember { mutableStateOf<PG?>(null) }
 
     val isLoggedIn = currentUser != null
 
@@ -219,6 +222,7 @@ fun PGFinderApp() {
                     onSelectPG = { pg -> selectedPG = pg; currentScreen = "pg_details" }
                 )
                 "add_pg" -> AddPGScreenWithCoordinates(
+                    initialPG = pendingPGFormData,
                     selectedLatitude = pendingLatitude,
                     selectedLongitude = pendingLongitude,
                     onSave = { newPg ->
@@ -232,14 +236,17 @@ fun PGFinderApp() {
                         pgViewModel.addPG(pgToSave)
                         pendingLatitude = null
                         pendingLongitude = null
+                        pendingPGFormData = null
                         currentScreen = if (currentUser.role == Role.OWNER) "owner_home" else "guest_home"
                     },
                     onBack = { 
                         pendingLatitude = null
                         pendingLongitude = null
+                        pendingPGFormData = null
                         currentScreen = if (currentUser?.role == Role.OWNER) "owner_home" else "guest_home" 
                     },
-                    onPickLocation = { lat, lng ->
+                    onPickLocation = { lat, lng, formData ->
+                        pendingPGFormData = formData
                         mapPickerReturnScreen = "add_pg"
                         mapPickerInitialLat = lat
                         mapPickerInitialLng = lng
@@ -247,7 +254,7 @@ fun PGFinderApp() {
                     }
                 )
                 "edit_pg" -> AddPGScreenWithCoordinates(
-                    initialPG = editingPG,
+                    initialPG = pendingPGFormData ?: editingPG,
                     selectedLatitude = pendingLatitude ?: editingPG?.latitude,
                     selectedLongitude = pendingLongitude ?: editingPG?.longitude,
                     onSave = { updatedPg ->
@@ -259,14 +266,17 @@ fun PGFinderApp() {
                         pgViewModel.updatePG(pgToUpdate)
                         pendingLatitude = null
                         pendingLongitude = null
+                        pendingPGFormData = null
                         currentScreen = "manage_pgs"
                     },
                     onBack = { 
                         pendingLatitude = null
                         pendingLongitude = null
+                        pendingPGFormData = null
                         currentScreen = "manage_pgs" 
                     },
-                    onPickLocation = { lat, lng ->
+                    onPickLocation = { lat, lng, formData ->
+                        pendingPGFormData = formData
                         mapPickerReturnScreen = "edit_pg"
                         mapPickerInitialLat = lat
                         mapPickerInitialLng = lng
